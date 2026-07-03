@@ -1,0 +1,133 @@
+name: Revisar cápsula
+
+on:
+  schedule:
+    - cron: '0 8 * * *'   # todos los días a las 08:00 UTC
+  workflow_dispatch: {}    # también se puede lanzar a mano para probar
+
+permissions:
+  contents: write
+
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Salir si no hay ninguna cápsula
+        id: gate
+        run: |
+          if [ ! -f capsules/capsule.json ]; then
+            echo "existe=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "existe=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Calcular días restantes
+        if: steps.gate.outputs.existe == 'true'
+        id: calc
+        run: |
+          DEADLINE=$(jq -r '.deadline' capsules/capsule.json)
+          REVEALED=$(jq -r '.revealed' capsules/capsule.json)
+          NOTIFY_SENT=$(jq -r '.notifySent' capsules/capsule.json)
+          NOTIFY_BEFORE=$(jq -r '.notifyBefore' capsules/capsule.json)
+          DISCORD_SENT=$(jq -r '.discordNotifySent // false' capsules/capsule.json)
+          DISCORD_BEFORE=$(jq -r '.discordNotifyBefore // 2' capsules/capsule.json)
+
+          TODAY_S=$(date -u -d "today" +%s)
+          DEADLINE_S=$(date -u -d "$DEADLINE" +%s)
+          DAYS_LEFT=$(( (DEADLINE_S - TODAY_S) / 86400 ))
+
+          echo "deadline=$DEADLINE" >> "$GITHUB_OUTPUT"
+          echo "revealed=$REVEALED" >> "$GITHUB_OUTPUT"
+          echo "notify_sent=$NOTIFY_SENT" >> "$GITHUB_OUTPUT"
+          echo "notify_before=$NOTIFY_BEFORE" >> "$GITHUB_OUTPUT"
+          echo "discord_sent=$DISCORD_SENT" >> "$GITHUB_OUTPUT"
+          echo "discord_before=$DISCORD_BEFORE" >> "$GITHUB_OUTPUT"
+          echo "days_left=$DAYS_LEFT" >> "$GITHUB_OUTPUT"
+
+      - name: Avisar por ntfy.sh (aviso previo)
+        if: >
+          steps.gate.outputs.existe == 'true' &&
+          steps.calc.outputs.revealed == 'false' &&
+          steps.calc.outputs.notify_sent == 'false' &&
+          steps.calc.outputs.days_left <= steps.calc.outputs.notify_before &&
+          steps.calc.outputs.days_left > 0
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          curl -s \
+            -H "Title: Cápsula del tiempo" \
+            -H "Priority: default" \
+            -H "Click: https://github.com/${{ github.repository }}/actions/workflows/extend-capsule.yml" \
+            -d "Quedan ${{ steps.calc.outputs.days_left }} días para que se abra tu cápsula (${{ steps.calc.outputs.deadline }}). Si quieres ampliar el plazo, entra y lanza el workflow 'Ampliar plazo'. Si no haces nada, se abrirá en la fecha prevista." \
+            "https://ntfy.sh/$NTFY_TOPIC"
+
+          jq '.notifySent = true' capsules/capsule.json > capsules/tmp.json
+          mv capsules/tmp.json capsules/capsule.json
+
+          git config user.name "capsula-bot"
+          git config user.email "capsula-bot@users.noreply.github.com"
+          git add capsules/capsule.json
+          git commit -m "Aviso previo enviado"
+          git push
+
+      - name: Avisar a tu amigo por Discord
+        if: >
+          steps.gate.outputs.existe == 'true' &&
+          steps.calc.outputs.revealed == 'false' &&
+          steps.calc.outputs.discord_sent == 'false' &&
+          steps.calc.outputs.days_left <= steps.calc.outputs.discord_before &&
+          steps.calc.outputs.days_left > 0
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          SITE_URL="https://$(echo '${{ github.repository }}' | cut -d/ -f1).github.io/$(echo '${{ github.repository }}' | cut -d/ -f2)/"
+          MSG="Mensaje automático: faltan ${{ steps.calc.outputs.days_left }} días para la fecha límite del contenido. Ponte en contacto con Carlos para que lo renueve. Cuando se desbloquee podrás verlo aquí: $SITE_URL"
+
+          curl -s -H "Content-Type: application/json" \
+            -d "$(jq -n --arg content "$MSG" '{content: $content}')" \
+            "$DISCORD_WEBHOOK_URL"
+
+          jq '.discordNotifySent = true' capsules/capsule.json > capsules/tmp.json
+          mv capsules/tmp.json capsules/capsule.json
+
+          git config user.name "capsula-bot"
+          git config user.email "capsula-bot@users.noreply.github.com"
+          git add capsules/capsule.json
+          git commit -m "Aviso a Discord enviado"
+          git push
+
+      - name: Revelar la cápsula (llegó la fecha)
+        if: >
+          steps.gate.outputs.existe == 'true' &&
+          steps.calc.outputs.revealed == 'false' &&
+          steps.calc.outputs.days_left <= 0
+        env:
+          CAPSULE_CONTENT: ${{ secrets.CAPSULE_CONTENT }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          mkdir -p public/data
+          FILENAME=$(jq -r '.filename' capsules/capsule.json)
+          jq -n --arg filename "$FILENAME" --arg content "$CAPSULE_CONTENT" \
+            '{filename: $filename, content: $content}' \
+            > public/data/content.json
+
+          jq '{deadline: .deadline, revealed: true, createdAt: .createdAt}' capsules/capsule.json \
+            > public/data/status.json
+
+          jq '.revealed = true' capsules/capsule.json > capsules/tmp.json
+          mv capsules/tmp.json capsules/capsule.json
+
+          curl -s \
+            -H "Title: Cápsula del tiempo" \
+            -H "Priority: high" \
+            -d "Ha llegado la fecha: tu cápsula ya está abierta." \
+            "https://ntfy.sh/$NTFY_TOPIC"
+
+          git config user.name "capsula-bot"
+          git config user.email "capsula-bot@users.noreply.github.com"
+          git add capsules/capsule.json public/data/status.json public/data/content.json
+          git commit -m "Revelar cápsula"
+          git push

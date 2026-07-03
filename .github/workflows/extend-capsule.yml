@@ -1,0 +1,47 @@
+name: Ampliar plazo de la cápsula
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_deadline:
+        description: 'Nueva fecha límite (formato YYYY-MM-DD)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  ampliar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Comprobar que hay una cápsula activa
+        run: |
+          if [ ! -f capsules/capsule.json ]; then
+            echo "::error::No hay ninguna cápsula creada todavía."
+            exit 1
+          fi
+          if [ "$(jq -r '.revealed' capsules/capsule.json)" = "true" ]; then
+            echo "::error::Esta cápsula ya se abrió, no se puede ampliar."
+            exit 1
+          fi
+
+      - name: Actualizar la fecha límite
+        run: |
+          jq --arg d "${{ inputs.new_deadline }}" '.deadline = $d | .notifySent = false | .discordNotifySent = false' \
+            capsules/capsule.json > capsules/tmp.json
+          mv capsules/tmp.json capsules/capsule.json
+
+          jq --arg d "${{ inputs.new_deadline }}" '.deadline = $d' \
+            public/data/status.json > public/data/tmp.json
+          mv public/data/tmp.json public/data/status.json
+
+      - name: Guardar cambios
+        run: |
+          git config user.name "capsula-bot"
+          git config user.email "capsula-bot@users.noreply.github.com"
+          git add capsules/capsule.json public/data/status.json
+          git commit -m "Ampliar plazo hasta ${{ inputs.new_deadline }}"
+          git push
