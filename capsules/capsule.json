@@ -4,7 +4,7 @@
   "notifyBefore": 10,
   "notifySent": true,
   "discordNotifyBefore": 2,
-  "discordNotifySent": false,
+  "discordNotifySent": true,
   "revealed": false,
   "createdAt": "2026-07-03T18:44:45Z"
 }
