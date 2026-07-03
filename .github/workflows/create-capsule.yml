@@ -1,0 +1,69 @@
+name: Crear cápsula
+
+on:
+  workflow_dispatch:
+    inputs:
+      deadline:
+        description: 'Fecha límite (formato YYYY-MM-DD)'
+        required: true
+      filename:
+        description: 'Nombre para mostrar del documento (solo etiqueta, no es sensible)'
+        required: false
+        default: 'capsula.txt'
+      notify_days:
+        description: 'Días de antelación para el aviso al móvil (ntfy)'
+        required: false
+        default: '10'
+      discord_notify_days:
+        description: 'Días de antelación para el aviso a tu amigo en Discord'
+        required: false
+        default: '2'
+
+permissions:
+  contents: write
+
+jobs:
+  crear:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Comprobar que el contenido está guardado como secreto
+        env:
+          CAPSULE_CONTENT: ${{ secrets.CAPSULE_CONTENT }}
+        run: |
+          if [ -z "$CAPSULE_CONTENT" ]; then
+            echo "::error::No existe el secreto CAPSULE_CONTENT (o está vacío). Ve a Settings → Secrets and variables → Actions y crea uno llamado CAPSULE_CONTENT con el texto de tu documento antes de lanzar este workflow."
+            exit 1
+          fi
+
+      - name: Construir los metadatos de la cápsula (sin el contenido)
+        run: |
+          mkdir -p capsules
+          jq -n \
+            --arg filename "${{ inputs.filename }}" \
+            --arg deadline "${{ inputs.deadline }}" \
+            --argjson notifyDays "${{ inputs.notify_days }}" \
+            --argjson discordNotifyDays "${{ inputs.discord_notify_days }}" \
+            --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{filename: $filename, deadline: $deadline, notifyBefore: $notifyDays, notifySent: false, discordNotifyBefore: $discordNotifyDays, discordNotifySent: false, revealed: false, createdAt: $createdAt}' \
+            > capsules/capsule.json
+
+      - name: Publicar solo la fecha (sin contenido) en la web
+        run: |
+          mkdir -p public/data
+          jq -n \
+            --arg deadline "${{ inputs.deadline }}" \
+            --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{deadline: $deadline, revealed: false, createdAt: $createdAt}' \
+            > public/data/status.json
+          rm -f public/data/content.json
+
+      - name: Guardar cambios
+        run: |
+          git config user.name "capsula-bot"
+          git config user.email "capsula-bot@users.noreply.github.com"
+          git add capsules/capsule.json public/data/status.json
+          git commit -m "Sellar cápsula (vence ${{ inputs.deadline }})"
+          git push
