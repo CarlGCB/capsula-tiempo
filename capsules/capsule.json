@@ -1,0 +1,10 @@
+{
+  "filename": "capsula.txt",
+  "deadline": "2026-07-05",
+  "notifyBefore": 10,
+  "notifySent": false,
+  "discordNotifyBefore": 2,
+  "discordNotifySent": false,
+  "revealed": false,
+  "createdAt": "2026-07-03T18:44:45Z"
+}
