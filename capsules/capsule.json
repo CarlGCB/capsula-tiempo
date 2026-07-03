@@ -2,7 +2,7 @@
   "filename": "capsula.txt",
   "deadline": "2026-07-05",
   "notifyBefore": 10,
-  "notifySent": false,
+  "notifySent": true,
   "discordNotifyBefore": 2,
   "discordNotifySent": false,
   "revealed": false,
