@@ -1,0 +1,208 @@
+:root{
+  --ink: #12141a;
+  --panel: #1b1f29;
+  --panel-edge: #2a2f3d;
+  --brass: #c9822b;
+  --brass-light: #e8b563;
+  --text: #edeae2;
+  --muted: #8b90a0;
+  --serif: "Fraunces", Georgia, serif;
+  --mono: "IBM Plex Mono", monospace;
+  --sans: "Inter", system-ui, sans-serif;
+}
+
+*{ box-sizing: border-box; }
+
+html,body{
+  margin:0;
+  min-height:100%;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--sans);
+}
+
+body{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding: 6vh 20px 4vh;
+}
+
+.grain{
+  position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image: radial-gradient(circle at 20% 20%, rgba(201,130,43,0.06), transparent 40%),
+                     radial-gradient(circle at 80% 70%, rgba(201,130,43,0.05), transparent 45%);
+}
+
+.stage{
+  position:relative; z-index:1;
+  width:100%; max-width: 560px;
+  display:flex; flex-direction:column; align-items:center;
+  gap: 28px;
+}
+
+.masthead{
+  text-align:center;
+}
+.eyebrow{
+  display:block;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brass-light);
+  margin-bottom: 8px;
+}
+h1{
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(28px, 6vw, 40px);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.panel{
+  width:100%;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 18px;
+  padding: 40px 32px;
+  display:flex; flex-direction:column; align-items:center;
+  gap: 14px;
+  text-align:center;
+  animation: rise 0.5s ease both;
+}
+@keyframes rise{
+  from{ opacity:0; transform: translateY(10px); }
+  to{ opacity:1; transform: translateY(0); }
+}
+.hidden{ display:none; }
+.muted{ color: var(--muted); margin:0; }
+
+/* Seal */
+.seal{
+  position:relative;
+  width:104px; height:104px;
+  margin-bottom: 6px;
+}
+.seal svg{ width:100%; height:100%; position:absolute; inset:0; }
+.seal__ring circle{
+  fill: none;
+  stroke: var(--brass);
+  stroke-width: 3;
+}
+.seal__mark path, .seal__mark circle{
+  fill: var(--brass-light);
+}
+.seal--empty svg circle{
+  fill:none; stroke: var(--panel-edge); stroke-width:3; stroke-dasharray: 6 8;
+}
+.seal--broken .seal__ring circle{
+  stroke-dasharray: 70 20;
+  stroke: var(--brass-light);
+}
+
+.deadline-date{
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.countdown{
+  display:flex; gap: 18px;
+}
+.countdown__unit{
+  display:flex; flex-direction:column; align-items:center;
+  min-width: 52px;
+}
+.countdown__unit span{
+  font-family: var(--serif);
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--brass-light);
+  font-variant-numeric: tabular-nums;
+}
+.countdown__unit label{
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.hint{
+  color: var(--muted);
+  font-size: 13px;
+  line-height:1.5;
+  max-width: 420px;
+  margin: 6px 0 0;
+}
+
+.letter{
+  width:100%;
+  text-align:left;
+  margin-top: 6px;
+}
+.letter h2{
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+  margin: 0 0 10px;
+  word-break: break-all;
+}
+.letter pre{
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--text);
+  background: rgba(0,0,0,0.15);
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.btn{
+  margin-top: 8px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--brass-light);
+  border: none;
+  padding: 12px 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.btn:hover{ background: var(--brass); }
+.btn:active{ transform: scale(0.97); }
+.btn:focus-visible{ outline: 2px solid var(--brass-light); outline-offset: 3px; }
+
+.foot{
+  position:relative; z-index:1;
+  margin-top: 32px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .panel{ animation: none; }
+}
+
+@media (max-width: 420px){
+  .panel{ padding: 30px 20px; }
+  .countdown{ gap: 10px; }
+  .countdown__unit{ min-width: 44px; }
+  .countdown__unit span{ font-size: 26px; }
+}
