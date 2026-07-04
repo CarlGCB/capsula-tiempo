@@ -7,10 +7,15 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   revisar:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -131,3 +136,27 @@ jobs:
           git add capsules/capsule.json public/data/status.json public/data/content.json
           git commit -m "Revelar cápsula"
           git push
+
+      - name: Preparar Pages
+        if: >
+          steps.gate.outputs.existe == 'true' &&
+          steps.calc.outputs.revealed == 'false' &&
+          steps.calc.outputs.days_left <= 0
+        uses: actions/configure-pages@v5
+
+      - name: Subir carpeta public/ como artefacto
+        if: >
+          steps.gate.outputs.existe == 'true' &&
+          steps.calc.outputs.revealed == 'false' &&
+          steps.calc.outputs.days_left <= 0
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './public'
+
+      - name: Desplegar
+        id: deployment
+        if: >
+          steps.gate.outputs.existe == 'true' &&
+          steps.calc.outputs.revealed == 'false' &&
+          steps.calc.outputs.days_left <= 0
+        uses: actions/deploy-pages@v4
