@@ -9,10 +9,15 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   ampliar:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -45,3 +50,15 @@ jobs:
           git add capsules/capsule.json public/data/status.json
           git commit -m "Ampliar plazo hasta ${{ inputs.new_deadline }}"
           git push
+
+      - name: Preparar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir carpeta public/ como artefacto
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './public'
+
+      - name: Desplegar
+        id: deployment
+        uses: actions/deploy-pages@v4
